@@ -1,0 +1,73 @@
+server:
+  port: 8080
+
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: comment-service-comments
+          uri: http://localhost:8083
+          predicates:
+            - Path=/api/articles/*/comments,/api/articles/*/comments/**
+          filters:
+            - StripPrefix=1
+
+        - id: user-service-users
+          uri: http://localhost:8081
+          predicates:
+            - Path=/api/users,/api/users/**
+          filters:
+            - StripPrefix=1
+
+        - id: user-service-user
+          uri: http://localhost:8081
+          predicates:
+            - Path=/api/user,/api/user/**
+          filters:
+            - StripPrefix=1
+
+        - id: user-service-profiles
+          uri: http://localhost:8081
+          predicates:
+            - Path=/api/profiles,/api/profiles/**
+          filters:
+            - StripPrefix=1
+
+        - id: article-service-tags
+          uri: http://localhost:8082
+          predicates:
+            - Path=/api/tags,/api/tags/**
+          filters:
+            - StripPrefix=1
+
+        - id: article-service-articles
+          uri: http://localhost:8082
+          predicates:
+            - Path=/api/articles,/api/articles/**
+          filters:
+            - StripPrefix=1
+
+  application:
+    name: api-gateway
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+spring.cloud.gateway.globalcors:
+  corsConfigurations:
+    '[/**]':
+      allowedOrigins: "*"
+      allowedMethods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - PATCH
+        - OPTIONS
+      allowedHeaders:
+        - Authorization
+        - Cache-Control
+        - Content-Type
