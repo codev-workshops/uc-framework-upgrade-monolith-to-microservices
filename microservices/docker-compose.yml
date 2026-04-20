@@ -1,0 +1,99 @@
+version: '3.8'
+
+services:
+  api-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.api-gateway
+    ports:
+      - "8080:8080"
+    depends_on:
+      user-service:
+        condition: service_healthy
+      article-service:
+        condition: service_healthy
+      comment-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  user-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.user-service
+    ports:
+      - "8081:8081"
+    volumes:
+      - user-data:/data
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:sqlite:/data/user.db
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  article-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.article-service
+    ports:
+      - "8082:8082"
+    volumes:
+      - article-data:/data
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:sqlite:/data/article.db
+      - USER_SERVICE_URL=http://user-service:8081
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  comment-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.comment-service
+    ports:
+      - "8083:8083"
+    volumes:
+      - comment-data:/data
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:sqlite:/data/comment.db
+      - USER_SERVICE_URL=http://user-service:8081
+      - ARTICLE_SERVICE_URL=http://article-service:8082
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://api-gateway:8080
+    depends_on:
+      - api-gateway
+
+  e2e-tests:
+    build:
+      context: ./e2e-tests
+    depends_on:
+      - frontend
+    environment:
+      - BASE_URL=http://frontend:3000
+    command: npx playwright test
+    profiles:
+      - test
+
+volumes:
+  user-data:
+  article-data:
+  comment-data:

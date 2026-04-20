@@ -1,0 +1,83 @@
+package io.spring.userservice.api;
+
+import com.fasterxml.jackson.annotation.JsonRootName;
+import io.spring.shared.auth.JwtService;
+import io.spring.shared.auth.UserPrincipal;
+import io.spring.userservice.api.exception.InvalidAuthenticationException;
+import io.spring.userservice.application.UserQueryService;
+import io.spring.userservice.application.data.UserData;
+import io.spring.userservice.application.data.UserWithToken;
+import io.spring.userservice.application.user.RegisterParam;
+import io.spring.userservice.application.user.UserService;
+import io.spring.userservice.core.user.User;
+import io.spring.userservice.core.user.UserRepository;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+import javax.validation.Valid;
+import javax.validation.constraints.Email;
+import javax.validation.constraints.NotBlank;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@AllArgsConstructor
+public class UsersApi {
+  private UserRepository userRepository;
+  private UserQueryService userQueryService;
+  private PasswordEncoder passwordEncoder;
+  private JwtService jwtService;
+  private UserService userService;
+
+  @RequestMapping(path = "/users", method = RequestMethod.POST)
+  public ResponseEntity createUser(@Valid @RequestBody RegisterParam registerParam) {
+    User user = userService.createUser(registerParam);
+    UserData userData = userQueryService.findById(user.getId()).get();
+    UserPrincipal principal = new UserPrincipal(user.getId(), user.getUsername(), user.getEmail());
+    return ResponseEntity.status(201)
+        .body(userResponse(new UserWithToken(userData, jwtService.toToken(principal))));
+  }
+
+  @RequestMapping(path = "/users/login", method = RequestMethod.POST)
+  public ResponseEntity userLogin(@Valid @RequestBody LoginParam loginParam) {
+    Optional<User> optional = userRepository.findByEmail(loginParam.getEmail());
+    if (optional.isPresent()
+        && passwordEncoder.matches(loginParam.getPassword(), optional.get().getPassword())) {
+      UserData userData = userQueryService.findById(optional.get().getId()).get();
+      User user = optional.get();
+      UserPrincipal principal =
+          new UserPrincipal(user.getId(), user.getUsername(), user.getEmail());
+      return ResponseEntity.ok(
+          userResponse(new UserWithToken(userData, jwtService.toToken(principal))));
+    } else {
+      throw new InvalidAuthenticationException();
+    }
+  }
+
+  private Map<String, Object> userResponse(UserWithToken userWithToken) {
+    return new HashMap<String, Object>() {
+      {
+        put("user", userWithToken);
+      }
+    };
+  }
+}
+
+@Getter
+@JsonRootName("user")
+@NoArgsConstructor
+class LoginParam {
+  @NotBlank(message = "can't be empty")
+  @Email(message = "should be an email")
+  private String email;
+
+  @NotBlank(message = "can't be empty")
+  private String password;
+}

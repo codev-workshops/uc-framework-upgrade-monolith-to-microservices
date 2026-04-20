@@ -1,0 +1,14 @@
+{
+  "name": "e2e-tests",
+  "version": "1.0.0",
+  "description": "Playwright E2E tests for RealWorld Conduit",
+  "scripts": {
+    "test": "npx playwright test",
+    "test:monolith": "BASE_URL=http://localhost:3000 npx playwright test",
+    "test:microservices": "BASE_URL=http://localhost:3000 npx playwright test",
+    "test:compare": "npm run test:monolith && npm run test:microservices"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.30.0"
+  }
+}

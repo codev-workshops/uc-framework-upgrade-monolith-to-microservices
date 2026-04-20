@@ -1,0 +1,5 @@
+FROM eclipse-temurin:11-jre
+COPY article-service/build/libs/article-service.jar app.jar
+VOLUME /data
+EXPOSE 8082
+ENTRYPOINT ["java", "-jar", "/app.jar"]

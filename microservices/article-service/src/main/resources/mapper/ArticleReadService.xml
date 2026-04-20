@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="io.spring.articleservice.infrastructure.mybatis.readservice.ArticleReadService">
+    <sql id="profileColumns">
+        U.id visitorId,
+        U.username visitorUsername,
+        U.bio visitorBio,
+        U.image visitorImage
+    </sql>
+    <select id="findById" resultMap="articleData">
+        select
+        A.id articleId,
+        A.slug articleSlug,
+        A.title articleTitle,
+        A.description articleDescription,
+        A.body articleBody,
+        A.created_at articleCreatedAt,
+        A.updated_at articleUpdatedAt,
+        A.user_id articleUserId,
+        T.name tagName
+        from articles A
+        left join article_tags AT on A.id = AT.article_id
+        left join tags T on T.id = AT.tag_id
+        where A.id = #{id}
+    </select>
+    <select id="findBySlug" resultMap="articleData">
+        select
+        A.id articleId,
+        A.slug articleSlug,
+        A.title articleTitle,
+        A.description articleDescription,
+        A.body articleBody,
+        A.created_at articleCreatedAt,
+        A.updated_at articleUpdatedAt,
+        A.user_id articleUserId,
+        T.name tagName
+        from articles A
+        left join article_tags AT on A.id = AT.article_id
+        left join tags T on T.id = AT.tag_id
+        where A.slug = #{slug}
+    </select>
+    <select id="queryArticles" resultType="java.lang.String">
+        select DISTINCT(A.id) from articles A
+        left join article_tags AT on A.id = AT.article_id
+        left join tags T on T.id = AT.tag_id
+        left join article_favorites AF on A.id = AF.article_id
+        <where>
+            <if test="tag != null">
+                T.name = #{tag}
+            </if>
+            <if test="author != null">
+                and A.user_id = #{author}
+            </if>
+            <if test="favoritedBy != null">
+                and AF.user_id = #{favoritedBy}
+            </if>
+        </where>
+        order by A.created_at desc
+        limit #{limit} offset #{offset}
+    </select>
+    <select id="countArticle" resultType="java.lang.Integer">
+        select count(DISTINCT A.id) from articles A
+        left join article_tags AT on A.id = AT.article_id
+        left join tags T on T.id = AT.tag_id
+        left join article_favorites AF on A.id = AF.article_id
+        <where>
+            <if test="tag != null">
+                T.name = #{tag}
+            </if>
+            <if test="author != null">
+                and A.user_id = #{author}
+            </if>
+            <if test="favoritedBy != null">
+                and AF.user_id = #{favoritedBy}
+            </if>
+        </where>
+    </select>
+    <select id="findArticles" resultMap="articleData">
+        select
+        A.id articleId,
+        A.slug articleSlug,
+        A.title articleTitle,
+        A.description articleDescription,
+        A.body articleBody,
+        A.created_at articleCreatedAt,
+        A.updated_at articleUpdatedAt,
+        A.user_id articleUserId,
+        T.name tagName
+        from articles A
+        left join article_tags AT on A.id = AT.article_id
+        left join tags T on T.id = AT.tag_id
+        where A.id in
+        <foreach collection="articleIds" item="id" open="(" close=")" separator=",">
+            #{id}
+        </foreach>
+        order by A.created_at desc
+    </select>
+    <select id="findArticlesOfAuthors" resultMap="articleData">
+        select
+        A.id articleId,
+        A.slug articleSlug,
+        A.title articleTitle,
+        A.description articleDescription,
+        A.body articleBody,
+        A.created_at articleCreatedAt,
+        A.updated_at articleUpdatedAt,
+        A.user_id articleUserId,
+        T.name tagName
+        from articles A
+        left join article_tags AT on A.id = AT.article_id
+        left join tags T on T.id = AT.tag_id
+        where A.user_id in
+        <foreach collection="authors" item="author" open="(" close=")" separator=",">
+            #{author}
+        </foreach>
+        order by A.created_at desc
+        limit #{limit} offset #{offset}
+    </select>
+    <select id="countFeedSize" resultType="java.lang.Integer">
+        select count(1) from articles A
+        where A.user_id in
+        <foreach collection="authors" item="author" open="(" close=")" separator=",">
+            #{author}
+        </foreach>
+    </select>
+
+    <resultMap id="articleData" type="io.spring.articleservice.application.data.ArticleData">
+        <id column="articleId" property="id"/>
+        <result column="articleSlug" property="slug"/>
+        <result column="articleTitle" property="title"/>
+        <result column="articleDescription" property="description"/>
+        <result column="articleBody" property="body"/>
+        <result column="articleCreatedAt" property="createdAt"/>
+        <result column="articleUpdatedAt" property="updatedAt"/>
+        <association property="profileData" javaType="io.spring.articleservice.application.data.ProfileData">
+            <id column="articleUserId" property="id"/>
+        </association>
+        <collection property="tagList" ofType="java.lang.String">
+            <result column="tagName"/>
+        </collection>
+    </resultMap>
+</mapper>
