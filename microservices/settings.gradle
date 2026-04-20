@@ -1,0 +1,8 @@
+rootProject.name = 'conduit-microservices'
+
+include 'shared-auth'
+include 'user-service'
+include 'article-service'
+include 'comment-service'
+include 'api-gateway'
+include 'data-migration'

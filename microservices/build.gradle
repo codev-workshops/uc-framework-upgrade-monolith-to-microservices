@@ -1,0 +1,46 @@
+buildscript {
+    repositories {
+        mavenCentral()
+        maven { url 'https://repo.spring.io/milestone' }
+    }
+    dependencies {
+        classpath 'org.springframework.boot:spring-boot-gradle-plugin:2.6.3'
+        classpath 'io.spring.gradle:dependency-management-plugin:1.0.11.RELEASE'
+        classpath 'com.diffplug.spotless:spotless-plugin-gradle:6.2.1'
+    }
+}
+
+allprojects {
+    group = 'io.spring.conduit'
+    version = '0.0.1-SNAPSHOT'
+
+    repositories {
+        mavenCentral()
+        maven { url 'https://repo.spring.io/milestone' }
+    }
+}
+
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'com.diffplug.spotless'
+
+    sourceCompatibility = '11'
+    targetCompatibility = '11'
+
+    spotless {
+        java {
+            target project.fileTree(project.projectDir) {
+                include '**/*.java'
+                exclude 'build/generated/**/*.*'
+            }
+            googleJavaFormat()
+        }
+    }
+
+    dependencies {
+        compileOnly 'org.projectlombok:lombok:1.18.22'
+        annotationProcessor 'org.projectlombok:lombok:1.18.22'
+        testCompileOnly 'org.projectlombok:lombok:1.18.22'
+        testAnnotationProcessor 'org.projectlombok:lombok:1.18.22'
+    }
+}

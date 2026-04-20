@@ -1,0 +1,3 @@
+#!/bin/sh
+# Wrapper that delegates to the root project's gradlew
+exec "$(dirname "$0")/../gradlew" -p "$(dirname "$0")" "$@"
