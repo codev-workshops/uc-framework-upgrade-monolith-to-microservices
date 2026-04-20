@@ -1,0 +1,18 @@
+{
+  "name": "conduit-e2e-tests",
+  "version": "1.0.0",
+  "description": "E2E API tests for Conduit microservices",
+  "scripts": {
+    "test": "npx playwright test",
+    "test:auth": "npx playwright test tests/auth.spec.ts",
+    "test:articles": "npx playwright test tests/articles.spec.ts",
+    "test:comments": "npx playwright test tests/comments.spec.ts",
+    "test:favorites": "npx playwright test tests/favorites.spec.ts",
+    "test:profiles": "npx playwright test tests/profiles.spec.ts",
+    "test:tags": "npx playwright test tests/tags.spec.ts",
+    "test:feed": "npx playwright test tests/feed.spec.ts"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.30.0"
+  }
+}
