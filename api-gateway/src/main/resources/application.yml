@@ -1,0 +1,69 @@
+server:
+  port: 8080
+
+spring:
+  cloud:
+    gateway:
+      routes:
+        # Comment routes (must be before generic articles)
+        - id: comment-service
+          uri: http://localhost:8083
+          predicates:
+            - Path=/api/articles/*/comments,/api/articles/*/comments/**
+          filters:
+            - StripPrefix=1
+
+        # Favorite routes (must be before generic articles)
+        - id: favorite-service
+          uri: http://localhost:8084
+          predicates:
+            - Path=/api/articles/*/favorite
+          filters:
+            - StripPrefix=1
+
+        # User service routes
+        - id: user-service-users
+          uri: http://localhost:8081
+          predicates:
+            - Path=/api/users/**
+          filters:
+            - StripPrefix=1
+
+        - id: user-service-user
+          uri: http://localhost:8081
+          predicates:
+            - Path=/api/user,/api/user/**
+          filters:
+            - StripPrefix=1
+
+        - id: user-service-profiles
+          uri: http://localhost:8081
+          predicates:
+            - Path=/api/profiles/**
+          filters:
+            - StripPrefix=1
+
+        # Article service routes
+        - id: article-service
+          uri: http://localhost:8082
+          predicates:
+            - Path=/api/articles/**,/api/articles
+          filters:
+            - StripPrefix=1
+
+        - id: tags-service
+          uri: http://localhost:8082
+          predicates:
+            - Path=/api/tags,/api/tags/**
+          filters:
+            - StripPrefix=1
+
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: "*"
+            allowedMethods: "*"
+            allowedHeaders: "*"
