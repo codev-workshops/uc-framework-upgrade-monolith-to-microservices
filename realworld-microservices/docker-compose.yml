@@ -1,0 +1,46 @@
+version: '3.8'
+services:
+  tag-service:
+    build: ./tag-service
+    ports:
+      - "8081:8081"
+  user-service:
+    build: ./user-service
+    ports:
+      - "8082:8082"
+  article-service:
+    build: ./article-service
+    ports:
+      - "8083:8083"
+    environment:
+      - USER_SERVICE_URL=http://user-service:8082
+      - FAVORITE_SERVICE_URL=http://favorite-service:8084
+  favorite-service:
+    build: ./favorite-service
+    ports:
+      - "8084:8084"
+    environment:
+      - ARTICLE_SERVICE_URL=http://article-service:8083
+  comment-service:
+    build: ./comment-service
+    ports:
+      - "8085:8085"
+    environment:
+      - USER_SERVICE_URL=http://user-service:8082
+      - ARTICLE_SERVICE_URL=http://article-service:8083
+  api-gateway:
+    build: ./api-gateway
+    ports:
+      - "8080:8080"
+    depends_on:
+      - tag-service
+      - user-service
+      - article-service
+      - favorite-service
+      - comment-service
+    environment:
+      - TAG_SERVICE_URL=http://tag-service:8081
+      - USER_SERVICE_URL=http://user-service:8082
+      - ARTICLE_SERVICE_URL=http://article-service:8083
+      - FAVORITE_SERVICE_URL=http://favorite-service:8084
+      - COMMENT_SERVICE_URL=http://comment-service:8085

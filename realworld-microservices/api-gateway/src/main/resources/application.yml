@@ -1,0 +1,47 @@
+server:
+  port: 8080
+
+spring:
+  cloud:
+    gateway:
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins: "*"
+            allowedMethods:
+              - HEAD
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - PATCH
+            allowedHeaders:
+              - Authorization
+              - Cache-Control
+              - Content-Type
+      routes:
+        # Comment endpoints must be before article routes (more specific)
+        - id: comment-service
+          uri: ${COMMENT_SERVICE_URL:http://localhost:8085}
+          predicates:
+            - Path=/articles/*/comments,/articles/*/comments/**
+        # Favorite endpoint
+        - id: favorite-service
+          uri: ${FAVORITE_SERVICE_URL:http://localhost:8084}
+          predicates:
+            - Path=/articles/*/favorite
+        # Tag service
+        - id: tag-service
+          uri: ${TAG_SERVICE_URL:http://localhost:8081}
+          predicates:
+            - Path=/tags
+        # User service routes
+        - id: user-service
+          uri: ${USER_SERVICE_URL:http://localhost:8082}
+          predicates:
+            - Path=/users,/users/**,/user,/profiles,/profiles/**
+        # Article service (catch-all for /articles/**)
+        - id: article-service
+          uri: ${ARTICLE_SERVICE_URL:http://localhost:8083}
+          predicates:
+            - Path=/articles,/articles/**
