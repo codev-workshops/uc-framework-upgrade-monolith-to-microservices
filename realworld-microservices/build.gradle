@@ -1,0 +1,34 @@
+plugins {
+    id 'org.springframework.boot' version '2.6.3' apply false
+    id 'io.spring.dependency-management' version '1.0.11.RELEASE' apply false
+    id 'java'
+}
+
+allprojects {
+    group = 'io.spring.realworld'
+    version = '0.0.1-SNAPSHOT'
+
+    repositories {
+        mavenCentral()
+    }
+}
+
+subprojects {
+    apply plugin: 'java'
+
+    sourceCompatibility = '11'
+    targetCompatibility = '11'
+
+    configurations {
+        compileOnly {
+            extendsFrom annotationProcessor
+        }
+    }
+
+    dependencies {
+        compileOnly 'org.projectlombok:lombok'
+        annotationProcessor 'org.projectlombok:lombok'
+        testCompileOnly 'org.projectlombok:lombok'
+        testAnnotationProcessor 'org.projectlombok:lombok'
+    }
+}

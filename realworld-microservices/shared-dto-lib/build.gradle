@@ -1,0 +1,8 @@
+plugins {
+    id 'java-library'
+}
+
+dependencies {
+    api 'com.fasterxml.jackson.core:jackson-annotations:2.13.1'
+    api 'joda-time:joda-time:2.10.13'
+}

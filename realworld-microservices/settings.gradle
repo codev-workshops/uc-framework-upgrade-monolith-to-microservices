@@ -1,0 +1,11 @@
+rootProject.name = 'realworld-microservices'
+
+include 'shared-auth-lib'
+include 'shared-dto-lib'
+include 'tag-service'
+include 'user-service'
+include 'article-service'
+include 'favorite-service'
+include 'comment-service'
+include 'api-gateway'
+include 'e2e-tests'
