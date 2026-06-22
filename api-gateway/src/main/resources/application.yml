@@ -1,0 +1,54 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      routes:
+        # Comment routes must be before article routes (more specific first)
+        - id: comment-service
+          uri: http://comment-service:8083
+          predicates:
+            - Path=/articles/*/comments,/articles/*/comments/**
+
+        # Favorite routes must be before article routes (more specific first)
+        - id: favorite-service
+          uri: http://favorite-service:8084
+          predicates:
+            - Path=/articles/*/favorite
+
+        # User service routes
+        - id: user-service-users
+          uri: http://user-service:8081
+          predicates:
+            - Path=/users,/users/**
+
+        - id: user-service-user
+          uri: http://user-service:8081
+          predicates:
+            - Path=/user,/user/**
+
+        - id: user-service-profiles
+          uri: http://user-service:8081
+          predicates:
+            - Path=/profiles,/profiles/**
+
+        # Article service routes
+        - id: article-service
+          uri: http://article-service:8082
+          predicates:
+            - Path=/articles,/articles/**
+
+        # Tags route
+        - id: tags-service
+          uri: http://article-service:8082
+          predicates:
+            - Path=/tags
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
