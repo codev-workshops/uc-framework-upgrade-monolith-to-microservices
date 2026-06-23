@@ -1,0 +1,43 @@
+plugins {
+    id 'java'
+}
+
+// This module has no main sources, only tests
+sourceSets {
+    main {
+        java.srcDirs = []
+        resources.srcDirs = []
+    }
+}
+
+dependencies {
+    testImplementation 'io.rest-assured:rest-assured:4.5.1'
+    testImplementation 'io.rest-assured:json-path:4.5.1'
+    testImplementation 'io.rest-assured:xml-path:4.5.1'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.8.2'
+    testImplementation 'org.assertj:assertj-core:3.22.0'
+    testImplementation 'com.fasterxml.jackson.core:jackson-databind'
+}
+
+tasks.register('integrationTest', Test) {
+    description = 'Run integration tests against all microservices via docker-compose'
+    group = 'verification'
+
+    useJUnitPlatform()
+
+    doFirst {
+        // Start docker-compose
+        exec {
+            workingDir rootProject.projectDir
+            commandLine 'docker-compose', 'up', '-d', '--wait'
+        }
+    }
+
+    doLast {
+        // Tear down docker-compose
+        exec {
+            workingDir rootProject.projectDir
+            commandLine 'docker-compose', 'down'
+        }
+    }
+}
