@@ -6,5 +6,11 @@
             <class name="io.spring.selenium.tests.SeleniumSetupTest"/>
         </classes>
     </test>
+
+    <test name="Cross-Service Journey">
+        <classes>
+            <class name="io.spring.selenium.tests.CrossServiceJourneyTest"/>
+        </classes>
+    </test>
     
 </suite>
