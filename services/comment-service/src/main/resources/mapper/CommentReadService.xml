@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="io.spring.commentservice.infrastructure.CommentReadService">
+    <resultMap id="commentData" type="io.spring.commentservice.service.CommentData">
+        <id column="id" property="id"/>
+        <result column="body" property="body"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="created_at" property="updatedAt"/>
+        <result column="article_id" property="articleId"/>
+        <result column="user_id" property="userId"/>
+    </resultMap>
+
+    <select id="findById" resultMap="commentData">
+        select id, body, created_at, article_id, user_id from comments where id = #{id}
+    </select>
+    <select id="findByArticleId" resultMap="commentData">
+        select id, body, created_at, article_id, user_id from comments
+        where article_id = #{articleId} order by created_at desc
+    </select>
+</mapper>

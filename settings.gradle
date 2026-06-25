@@ -1,0 +1,8 @@
+rootProject.name = 'realworld-microservices'
+
+include 'shared-contracts'
+include 'services:user-service'
+include 'services:article-service'
+include 'services:comment-service'
+include 'services:favorite-service'
+include 'services:api-gateway'
