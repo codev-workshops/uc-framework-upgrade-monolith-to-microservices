@@ -51,8 +51,17 @@ public class ArticleQueryService {
 
   public ArticleDataList findRecentArticles(
       String tag, String author, String favoritedBy, Page page, String currentUserId) {
-    List<String> articleIds = articleReadService.queryArticles(tag, author, favoritedBy, page);
-    int articleCount = articleReadService.countArticle(tag, author, favoritedBy);
+    String authorId = null;
+    if (author != null) {
+      authorId = userServiceClient.findUserByUsername(author)
+          .map(u -> u.getId())
+          .orElse(null);
+      if (authorId == null) {
+        return new ArticleDataList(new ArrayList<>(), 0);
+      }
+    }
+    List<String> articleIds = articleReadService.queryArticles(tag, authorId, page);
+    int articleCount = articleReadService.countArticle(tag, authorId);
     if (articleIds.size() == 0) {
       return new ArticleDataList(new ArrayList<>(), articleCount);
     } else {

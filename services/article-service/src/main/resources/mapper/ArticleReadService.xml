@@ -55,8 +55,8 @@
             <if test="tag != null">
                 T.name = #{tag}
             </if>
-            <if test="author != null">
-                AND A.user_id IN (SELECT id FROM (SELECT #{author} as username) params)
+            <if test="authorId != null">
+                AND A.user_id = #{authorId}
             </if>
         </where>
         order by A.created_at desc
@@ -69,6 +69,9 @@
         <where>
             <if test="tag != null">
                 T.name = #{tag}
+            </if>
+            <if test="authorId != null">
+                AND A.user_id = #{authorId}
             </if>
         </where>
     </select>

@@ -19,7 +19,7 @@ mybatis:
     default-statement-timeout: 3000
     map-underscore-to-camel-case: true
     use-generated-keys: true
-  type-handlers-package: io.spring.commentservice.infrastructure
+  type-handlers-package: io.spring.shared.mybatis
   mapper-locations: mapper/*.xml
 
 services:

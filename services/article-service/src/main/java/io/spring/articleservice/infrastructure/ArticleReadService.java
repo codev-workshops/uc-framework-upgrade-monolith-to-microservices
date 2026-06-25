@@ -13,14 +13,12 @@ public interface ArticleReadService {
 
   List<String> queryArticles(
       @Param("tag") String tag,
-      @Param("author") String author,
-      @Param("favoritedBy") String favoritedBy,
+      @Param("authorId") String authorId,
       @Param("page") io.spring.articleservice.service.Page page);
 
   int countArticle(
       @Param("tag") String tag,
-      @Param("author") String author,
-      @Param("favoritedBy") String favoritedBy);
+      @Param("authorId") String authorId);
 
   List<ArticleData> findArticles(@Param("articleIds") List<String> articleIds);
 
