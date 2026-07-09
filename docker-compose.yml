@@ -1,0 +1,74 @@
+# Wires the decomposed RealWorld/Conduit microservices + the api-gateway.
+# The gateway restores the original public API on http://localhost:8080 (same as the monolith).
+# Each service owns its own SQLite database (inside its container; ephemeral).
+services:
+  user-auth-service:
+    build: ./services/user-auth-service
+    ports:
+      - "8081:8081"
+    environment:
+      - SERVER_PORT=8081
+
+  profile-service:
+    build: ./services/profile-service
+    ports:
+      - "8082:8082"
+    environment:
+      - SERVER_PORT=8082
+      - SERVICES_USER_AUTH_URL=http://user-auth-service:8081
+    depends_on:
+      - user-auth-service
+
+  article-service:
+    build: ./services/article-service
+    ports:
+      - "8083:8083"
+    environment:
+      - SERVER_PORT=8083
+      - SERVICES_USER_AUTH_URL=http://user-auth-service:8081
+      - SERVICES_FAVORITE_URL=http://favorite-service:8084
+      - SERVICES_PROFILE_URL=http://profile-service:8082
+    depends_on:
+      - user-auth-service
+      - profile-service
+      - favorite-service
+
+  favorite-service:
+    build: ./services/favorite-service
+    ports:
+      - "8084:8084"
+    environment:
+      - SERVER_PORT=8084
+      - SERVICES_USER_AUTH_URL=http://user-auth-service:8081
+
+  comment-service:
+    build: ./services/comment-service
+    ports:
+      - "8085:8085"
+    environment:
+      - SERVER_PORT=8085
+      - SERVICES_ARTICLE_URL=http://article-service:8083
+      - SERVICES_USER_AUTH_URL=http://user-auth-service:8081
+      - SERVICES_PROFILE_URL=http://profile-service:8082
+    depends_on:
+      - article-service
+      - user-auth-service
+      - profile-service
+
+  api-gateway:
+    build: ./services/api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - SERVER_PORT=8080
+      - SERVICES_USER_AUTH_URL=http://user-auth-service:8081
+      - SERVICES_PROFILE_URL=http://profile-service:8082
+      - SERVICES_ARTICLE_URL=http://article-service:8083
+      - SERVICES_FAVORITE_URL=http://favorite-service:8084
+      - SERVICES_COMMENT_URL=http://comment-service:8085
+    depends_on:
+      - user-auth-service
+      - profile-service
+      - article-service
+      - favorite-service
+      - comment-service

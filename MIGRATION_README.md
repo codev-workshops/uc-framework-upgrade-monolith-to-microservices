@@ -80,5 +80,67 @@ and comment services free of a direct dependency on article for writes where pos
 
 ## Local run
 
-`docker-compose.yml` (added in the integration phase) wires every service + its database + the
-gateway. The gateway exposes the original public API on port 8080, identical to the monolith.
+`docker-compose.yml` (repo root) wires every service + its database + the gateway. The gateway
+exposes the original public API on port 8080, identical to the monolith.
+
+```
+docker compose up --build          # all services + gateway; API on http://localhost:8080
+```
+
+Without Docker (JDK 11 required):
+
+```
+for s in services/*/; do (cd "$s" && ./gradlew bootJar -x test); done
+./scripts/run-local.sh             # starts all 6 processes wired over localhost
+```
+
+## api-gateway / BFF
+
+`services/api-gateway/` restores the monolith's public surface on port 8080:
+
+- **REST** — `RestGatewayController` transparently reverse-proxies each public path to the owning
+  service (method, query, body and the `Authorization` header are preserved). The favorite
+  endpoints are special-cased in `FavoriteGatewayController`: favorite-service returns favorite
+  *state* only, so the gateway resolves `slug→id` (article-service `/internal/articles/{slug}`),
+  mutates favorite state (favorite-service), then asks article-service
+  (`/internal/articles/{id}/data`) to recompose the full `ArticleData` — reproducing the
+  monolith's `{ "article": { ... } }` response.
+- **GraphQL** — the original `schema.graphqls` is served by DGS in the gateway. Datafetchers
+  (`io.spring.gateway.graphql.datafetchers.*`) fan out to the services via `GatewayClient`,
+  forwarding the request's `Authorization` header through a request-scoped `RequestAuthContext`.
+  Composed `Article`/`Comment`/`Profile`/`User` types are built from the services' already-composed
+  JSON.
+
+### GraphQL parity notes / remaining cross-boundary items
+
+- The monolith's GraphQL connections use **date-based cursors** (`ArticleQueryService
+  .findRecentArticlesWithCursor`, `CommentQueryService.findByArticleIdWithCursor`). The public
+  REST list endpoints the gateway consumes are **offset/limit** based, so gateway connection
+  cursors are **offset indices** (`first`/`after` fully supported; `last`/`before` are best-effort).
+  Making GraphQL cursor-identical would require exposing the cursor queries on the internal REST
+  contracts (a contract change across article- and comment-service).
+- `Comment.article` (the back-reference from a comment to its article in the GraphQL schema) is
+  not resolved by the gateway: the public comment payload intentionally hides `articleId`
+  (`@JsonIgnore`), so the gateway cannot cheaply resolve it without a new internal endpoint. It is
+  unused by the RealWorld frontend (which is REST). Documented here as a known gap.
+- `Profile.feed` is resolved as the *authenticated current user's* feed (the public API only
+  exposes a feed for the current user), matching how the frontend uses it.
+
+## Verification (behaviour parity with the monolith)
+
+Both suites were run against the live decomposed stack (all 6 services on localhost):
+
+- `scripts/e2e-rest-parity.sh` — register/login, current user, tags, article CRUD, favorite/
+  unfavorite recomposition (`favorited`/`favoritesCount`), comment CRUD, profile follow/unfollow,
+  feed. **18/18 pass.**
+- `scripts/e2e-graphql.sh` — `login`, `me`, `tags`, `article`, `articles` connection,
+  `favoriteArticle`/`unfavoriteArticle`, `addComment`/`deleteComment`, `article.comments`,
+  `profile`, `followUser`/`unfollowUser`, `createUser` (UserResult union), `updateUser`,
+  `deleteArticle`. **18/18 pass.**
+
+The gateway module additionally ships CI-safe WireMock integration tests
+(`GatewayIntegrationTest`) covering routing, favorite recomposition and GraphQL composition.
+
+The existing Selenium smoke suite (`src/test/resources/selenium/`) targets `api.url=http://
+localhost:8080`; since the gateway restores that exact API, the suite runs against the gateway
+unchanged (config-only) — no monolith source was modified.
