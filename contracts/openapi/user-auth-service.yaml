@@ -1,0 +1,120 @@
+openapi: 3.0.3
+info:
+  title: user-auth-service
+  version: "1.0.0"
+  description: >
+    Owns the `users` table. Issues + validates JWTs. Provides registration, login,
+    current-user, and internal user-lookup for author projection. No outbound domain deps.
+servers:
+  - url: http://user-auth-service:8081
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  schemas:
+    RegisterRequest:
+      type: object
+      properties:
+        user:
+          type: object
+          required: [email, username, password]
+          properties:
+            email: { type: string, format: email }
+            username: { type: string }
+            password: { type: string }
+    LoginRequest:
+      type: object
+      properties:
+        user:
+          type: object
+          required: [email, password]
+          properties:
+            email: { type: string, format: email }
+            password: { type: string }
+    UpdateUserRequest:
+      type: object
+      properties:
+        user:
+          type: object
+          properties:
+            email: { type: string }
+            username: { type: string }
+            password: { type: string }
+            bio: { type: string }
+            image: { type: string }
+    UserWithTokenResponse:
+      type: object
+      properties:
+        user:
+          type: object
+          properties:
+            email: { type: string }
+            username: { type: string }
+            bio: { type: string }
+            image: { type: string }
+            token: { type: string }
+    AuthorRef:
+      type: object
+      properties:
+        id: { type: string }
+        username: { type: string }
+        bio: { type: string }
+        image: { type: string }
+paths:
+  /users:
+    post:
+      summary: Register (public). Returns 201 with user + token.
+      security: []
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/RegisterRequest' } } }
+      responses:
+        '201': { description: created, content: { application/json: { schema: { $ref: '#/components/schemas/UserWithTokenResponse' } } } }
+        '422': { description: validation error }
+  /users/login:
+    post:
+      summary: Login (public). Returns 200 with user + token.
+      security: []
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/LoginRequest' } } }
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { $ref: '#/components/schemas/UserWithTokenResponse' } } } }
+        '401': { description: bad credentials }
+  /user:
+    get:
+      summary: Current user (auth required). Echoes the presented token.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { $ref: '#/components/schemas/UserWithTokenResponse' } } } }
+        '401': { description: unauthorized }
+    put:
+      summary: Update current user (auth required).
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/UpdateUserRequest' } } }
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { $ref: '#/components/schemas/UserWithTokenResponse' } } } }
+  # ---- internal (service-to-service only; NOT exposed by the gateway) ----
+  /internal/users/{id}:
+    get:
+      summary: Resolve author projection by user id.
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { $ref: '#/components/schemas/AuthorRef' } } } }
+        '404': { description: not found }
+  /internal/users/by-username/{username}:
+    get:
+      summary: Resolve author projection by username (used by profile/article filters).
+      parameters: [{ name: username, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { $ref: '#/components/schemas/AuthorRef' } } } }
+        '404': { description: not found }
+  /internal/users/batch:
+    post:
+      summary: Batch resolve author projections by id.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: array, items: { type: string } } } }
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/AuthorRef' } } } } }

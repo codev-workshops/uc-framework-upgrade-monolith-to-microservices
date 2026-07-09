@@ -1,0 +1,73 @@
+openapi: 3.0.3
+info:
+  title: comment-service
+  version: "1.0.0"
+  description: >
+    Owns `comments`. Comment CRUD + comment read model with author follow-flags. Resolves
+    article-by-slug (and article authorId for authz) via article-service, follow-flags via
+    profile-service, author projection via user-auth-service. Reimplements canWriteComment.
+servers:
+  - url: http://comment-service:8085
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  schemas:
+    CommentData:
+      type: object
+      properties:
+        id: { type: string }
+        body: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        author:
+          type: object
+          properties:
+            username: { type: string }
+            bio: { type: string }
+            image: { type: string }
+            following: { type: boolean }
+    CommentResponse:
+      type: object
+      properties: { comment: { $ref: '#/components/schemas/CommentData' } }
+    CommentListResponse:
+      type: object
+      properties:
+        comments: { type: array, items: { $ref: '#/components/schemas/CommentData' } }
+    NewCommentRequest:
+      type: object
+      properties:
+        comment:
+          type: object
+          required: [body]
+          properties: { body: { type: string } }
+paths:
+  /articles/{slug}/comments:
+    get:
+      summary: List comments for an article (public). Resolves slug via article-service.
+      security: []
+      parameters: [{ name: slug, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { $ref: '#/components/schemas/CommentListResponse' } } } }
+        '404': { description: article not found }
+    post:
+      summary: Add comment (auth required). Returns 201 with composed CommentData.
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: slug, in: path, required: true, schema: { type: string } }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/NewCommentRequest' } } } }
+      responses:
+        '201': { description: created, content: { application/json: { schema: { $ref: '#/components/schemas/CommentResponse' } } } }
+        '404': { description: article not found }
+    # NOTE: monolith path is /articles/{slug}/comments/{id} for delete
+  /articles/{slug}/comments/{id}:
+    delete:
+      summary: >
+        Delete comment (auth required). Authorized if current user is the comment author OR the
+        article author (canWriteComment). Article authorId fetched from article-service.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: slug, in: path, required: true, schema: { type: string } }
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '204': { description: deleted }
+        '403': { description: not authorized }
+        '404': { description: not found }

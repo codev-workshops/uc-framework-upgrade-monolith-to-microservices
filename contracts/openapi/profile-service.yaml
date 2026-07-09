@@ -1,0 +1,78 @@
+openapi: 3.0.3
+info:
+  title: profile-service
+  version: "1.0.0"
+  description: >
+    Owns the `follows` table. Serves the public profile endpoints and internal follow-graph
+    queries consumed by article feed + comment enrichment. Resolves user identity via
+    user-auth-service (AuthorRef).
+servers:
+  - url: http://profile-service:8082
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  schemas:
+    ProfileResponse:
+      type: object
+      properties:
+        profile:
+          type: object
+          properties:
+            username: { type: string }
+            bio: { type: string }
+            image: { type: string }
+            following: { type: boolean }
+    FollowStatus:
+      type: object
+      properties:
+        following: { type: boolean }
+paths:
+  /profiles/{username}:
+    get:
+      summary: Get profile (public; following=false when anonymous).
+      security: []
+      parameters: [{ name: username, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { $ref: '#/components/schemas/ProfileResponse' } } } }
+        '404': { description: not found }
+  /profiles/{username}/follow:
+    post:
+      summary: Follow user (auth required). Returns profile with following=true.
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: username, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { $ref: '#/components/schemas/ProfileResponse' } } } }
+        '404': { description: not found }
+    delete:
+      summary: Unfollow user (auth required). Returns profile with following=false.
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: username, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { $ref: '#/components/schemas/ProfileResponse' } } } }
+        '404': { description: not found }
+  # ---- internal ----
+  /internal/follows:
+    get:
+      summary: Does userId follow targetId?
+      parameters:
+        - { name: userId, in: query, required: true, schema: { type: string } }
+        - { name: targetId, in: query, required: true, schema: { type: string } }
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { $ref: '#/components/schemas/FollowStatus' } } } }
+  /internal/follows/followed:
+    get:
+      summary: List target ids that userId follows (drives the feed).
+      parameters: [{ name: userId, in: query, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { type: array, items: { type: string } } } } }
+  /internal/follows/among:
+    post:
+      summary: >
+        Given userId and a set of candidate author ids, return the subset that userId follows.
+        Mirrors UserRelationshipQueryService.followingAuthors.
+      parameters: [{ name: userId, in: query, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: array, items: { type: string } } } }
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { type: array, items: { type: string } } } } }

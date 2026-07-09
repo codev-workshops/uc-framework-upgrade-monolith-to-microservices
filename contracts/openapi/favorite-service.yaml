@@ -1,0 +1,78 @@
+openapi: 3.0.3
+info:
+  title: favorite-service
+  version: "1.0.0"
+  description: >
+    Owns `article_favorites`. Favorite/unfavorite plus batch favorite-count and per-user
+    favorite-state queries consumed by the article read model. NOTE: in the new design the
+    favorite/unfavorite endpoints return favorite STATE only; the gateway/article-service
+    recompose the full ArticleData (unlike the monolith which returned a full ArticleData).
+servers:
+  - url: http://favorite-service:8084
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  schemas:
+    FavoriteState:
+      type: object
+      properties:
+        articleId: { type: string }
+        favorited: { type: boolean }
+        favoritesCount: { type: integer }
+    ArticleFavoriteCount:
+      type: object
+      properties:
+        id: { type: string }
+        count: { type: integer }
+paths:
+  # Public-facing mutation endpoints. The gateway maps /articles/{slug}/favorite -> these by
+  # first resolving slug->id via article-service, then recomposing via article-service.
+  /articles/{articleId}/favorite:
+    post:
+      summary: Favorite an article (auth required). Returns favorite state only.
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: articleId, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { $ref: '#/components/schemas/FavoriteState' } } } }
+    delete:
+      summary: Unfavorite an article (auth required). Returns favorite state only.
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: articleId, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { $ref: '#/components/schemas/FavoriteState' } } } }
+  # ---- internal (consumed by article-service composition) ----
+  /internal/favorites/counts:
+    post:
+      summary: Batch favorite counts for article ids. Mirrors articlesFavoriteCount.
+      requestBody: { required: true, content: { application/json: { schema: { type: array, items: { type: string } } } } }
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/ArticleFavoriteCount' } } } } }
+  /internal/favorites/count/{articleId}:
+    get:
+      summary: Single article favorite count.
+      parameters: [{ name: articleId, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { type: object, properties: { id: { type: string }, count: { type: integer } } } } } }
+  /internal/favorites/status:
+    post:
+      summary: >
+        Given userId and a set of article ids, return the subset the user has favorited.
+        Mirrors ArticleFavoritesReadService.userFavorites.
+      parameters: [{ name: userId, in: query, required: true, schema: { type: string } }]
+      requestBody: { required: true, content: { application/json: { schema: { type: array, items: { type: string } } } } }
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { type: array, items: { type: string } } } } }
+  /internal/favorites/is-favorite:
+    get:
+      summary: Is a single (userId, articleId) favorited?
+      parameters:
+        - { name: userId, in: query, required: true, schema: { type: string } }
+        - { name: articleId, in: query, required: true, schema: { type: string } }
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { type: object, properties: { favorited: { type: boolean } } } } } }
+  /internal/favorites/by-user:
+    get:
+      summary: List article ids favorited by a user (drives the favorited= filter).
+      parameters: [{ name: username, in: query, required: false, schema: { type: string } }, { name: userId, in: query, required: false, schema: { type: string } }]
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { type: array, items: { type: string } } } } }

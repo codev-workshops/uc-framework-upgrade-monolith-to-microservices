@@ -1,0 +1,149 @@
+openapi: 3.0.3
+info:
+  title: article-service
+  version: "1.0.0"
+  description: >
+    Owns `articles`, `tags`, `article_tags`. Article + Tag CRUD, slug resolution, and the
+    article read-model COMPOSITION (favoritesCount, favorited, author.following). Keeps the
+    multi-table article-save transaction intact. Composes by calling user-auth (author),
+    favorite (counts/status), profile (follow flags) per the frozen composition strategy.
+servers:
+  - url: http://article-service:8083
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  schemas:
+    ArticleData:
+      type: object
+      properties:
+        slug: { type: string }
+        title: { type: string }
+        description: { type: string }
+        body: { type: string }
+        tagList: { type: array, items: { type: string } }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        favorited: { type: boolean }
+        favoritesCount: { type: integer }
+        author:
+          type: object
+          properties:
+            username: { type: string }
+            bio: { type: string }
+            image: { type: string }
+            following: { type: boolean }
+    ArticleResponse:
+      type: object
+      properties: { article: { $ref: '#/components/schemas/ArticleData' } }
+    ArticleListResponse:
+      type: object
+      properties:
+        articles: { type: array, items: { $ref: '#/components/schemas/ArticleData' } }
+        articlesCount: { type: integer }
+    NewArticleRequest:
+      type: object
+      properties:
+        article:
+          type: object
+          required: [title, description, body]
+          properties:
+            title: { type: string }
+            description: { type: string }
+            body: { type: string }
+            tagList: { type: array, items: { type: string } }
+    UpdateArticleRequest:
+      type: object
+      properties:
+        article:
+          type: object
+          properties:
+            title: { type: string }
+            description: { type: string }
+            body: { type: string }
+    ArticleRef:
+      type: object
+      description: Internal slug->id resolution incl. authorId for authorization.
+      properties:
+        id: { type: string }
+        slug: { type: string }
+        authorId: { type: string }
+paths:
+  /articles:
+    get:
+      summary: List articles (public). Filters tag/author/favorited, offset/limit paging.
+      security: []
+      parameters:
+        - { name: offset, in: query, schema: { type: integer, default: 0 } }
+        - { name: limit, in: query, schema: { type: integer, default: 20 } }
+        - { name: tag, in: query, schema: { type: string } }
+        - { name: author, in: query, schema: { type: string } }
+        - { name: favorited, in: query, schema: { type: string } }
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { $ref: '#/components/schemas/ArticleListResponse' } } } }
+    post:
+      summary: Create article (auth required). Returns composed ArticleData.
+      security: [{ bearerAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/NewArticleRequest' } } } }
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { $ref: '#/components/schemas/ArticleResponse' } } } }
+  /articles/feed:
+    get:
+      summary: >
+        Feed (auth required). Fetches followed author ids from profile-service, then own
+        articles by user_id, then composes.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: offset, in: query, schema: { type: integer, default: 0 } }
+        - { name: limit, in: query, schema: { type: integer, default: 20 } }
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { $ref: '#/components/schemas/ArticleListResponse' } } } }
+  /articles/{slug}:
+    get:
+      summary: Get article by slug (public).
+      security: []
+      parameters: [{ name: slug, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { $ref: '#/components/schemas/ArticleResponse' } } } }
+        '404': { description: not found }
+    put:
+      summary: Update article (auth required; author only -> 403 otherwise).
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: slug, in: path, required: true, schema: { type: string } }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/UpdateArticleRequest' } } } }
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { $ref: '#/components/schemas/ArticleResponse' } } } }
+        '403': { description: not author }
+        '404': { description: not found }
+    delete:
+      summary: Delete article (auth required; author only).
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: slug, in: path, required: true, schema: { type: string } }]
+      responses:
+        '204': { description: deleted }
+        '403': { description: not author }
+        '404': { description: not found }
+  /tags:
+    get:
+      summary: All tag names (public).
+      security: []
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { type: object, properties: { tags: { type: array, items: { type: string } } } } } } }
+  # ---- internal ----
+  /internal/articles/{slug}:
+    get:
+      summary: Resolve article by slug -> {id, slug, authorId} (for comment authz + favorite).
+      parameters: [{ name: slug, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { $ref: '#/components/schemas/ArticleRef' } } } }
+        '404': { description: not found }
+  /internal/articles/{id}/data:
+    get:
+      summary: >
+        Recompose full ArticleData by article id for a given current user (used by the gateway
+        after favorite/unfavorite so favorite endpoints can return the full article).
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { $ref: '#/components/schemas/ArticleResponse' } } } }
+        '404': { description: not found }
