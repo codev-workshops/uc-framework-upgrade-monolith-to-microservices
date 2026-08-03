@@ -112,6 +112,6 @@ each with its own Flyway schema, plus a passing Selenium E2E run.
 - [x] Phase 1 — tag-service
 - [ ] Phase 2 — favorite-service
 - [ ] Phase 3 — profile-service
-- [ ] Phase 4 — comment-service
+- [x] Phase 4 — comment-service
 - [ ] Phase 5 — article-service + read composition
 - [ ] Phase 6 — E2E acceptance (`seleniumTest` green)
