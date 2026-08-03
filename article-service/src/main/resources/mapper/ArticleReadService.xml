@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="io.spring.infrastructure.mybatis.readservice.ArticleReadService">
+    <!--
+      article-service owns only the articles table: the tag/favorite/author joins in the monolith
+      are replaced by API composition (tag/favorite/profile/user services) in ArticleQueryService.
+      The author id (A.user_id) is surfaced as the referenced ProfileData.id and enriched later.
+    -->
+    <sql id="selectArticleData">
+        select
+        A.id articleId,
+        A.slug articleSlug,
+        A.title articleTitle,
+        A.description articleDescription,
+        A.body articleBody,
+        A.user_id articleUserId,
+        A.created_at articleCreatedAt,
+        A.updated_at articleUpdatedAt
+        from articles A
+    </sql>
+
+    <select id="findById" resultMap="articleData">
+        <include refid="selectArticleData"/>
+        where A.id = #{id}
+    </select>
+
+    <select id="findBySlug" resultMap="articleData">
+        <include refid="selectArticleData"/>
+        where A.slug = #{slug}
+    </select>
+
+    <select id="findAll" resultMap="articleData">
+        <include refid="selectArticleData"/>
+        order by A.created_at desc
+    </select>
+
+    <select id="findByAuthors" resultMap="articleData">
+        <include refid="selectArticleData"/>
+        where A.user_id in
+        <foreach index="index" collection="authors" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        order by A.created_at desc
+    </select>
+
+    <resultMap id="articleData" type="io.spring.application.data.ArticleData">
+        <id column="articleId" property="id"/>
+        <result column="articleSlug" property="slug"/>
+        <result column="articleTitle" property="title"/>
+        <result column="articleDescription" property="description"/>
+        <result column="articleBody" property="body"/>
+        <result column="articleCreatedAt" property="createdAt"/>
+        <result column="articleUpdatedAt" property="updatedAt"/>
+        <association property="profileData" javaType="io.spring.contracts.dto.ProfileData">
+            <id column="articleUserId" property="id"/>
+        </association>
+    </resultMap>
+</mapper>
