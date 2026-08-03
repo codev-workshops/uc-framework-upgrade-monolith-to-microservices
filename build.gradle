@@ -102,8 +102,12 @@ tasks.register('seleniumTest', Test) {
 	description = 'Run Selenium E2E tests'
 	group = 'verification'
 	
+	// The suite exercises a running system, so its result can never be considered up to date.
+	outputs.upToDateWhen { false }
+
+	// -PseleniumSuite=<name> runs src/test/resources/selenium/testng-<name>.xml instead
 	useTestNG {
-		suites 'src/test/resources/selenium/testng-smoke.xml'
+		suites "src/test/resources/selenium/testng-${project.findProperty('seleniumSuite') ?: 'e2e'}.xml"
 	}
 	
 	// Only include Selenium tests
@@ -116,6 +120,23 @@ tasks.register('seleniumTest', Test) {
 	
 	// Don't fail the build on test failures (for CI reporting)
 	ignoreFailures = false
+}
+
+// WebDriver-only smoke suite (no application under test required)
+tasks.register('seleniumSmokeTest', Test) {
+	description = 'Run the Selenium harness smoke suite'
+	group = 'verification'
+
+	useTestNG {
+		suites 'src/test/resources/selenium/testng-smoke.xml'
+	}
+
+	include 'io/spring/selenium/**'
+
+	testLogging {
+		events "passed", "skipped", "failed"
+		showStandardStreams = true
+	}
 }
 
 tasks.named('clean') {

@@ -1,5 +1,6 @@
 package io.spring.selenium.pages;
 
+import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.PageFactory;
@@ -53,5 +54,30 @@ public abstract class BasePage {
     } catch (Exception e) {
       return false;
     }
+  }
+
+  // ---------------------------------------------------------------- navbar
+
+  /** True when the navbar shows the "Sign in" link, i.e. nobody is authenticated. */
+  public boolean isLoggedOut() {
+    return !driver.findElements(By.cssSelector("a[href='/user/login']")).isEmpty();
+  }
+
+  /** True when the navbar shows the given user's profile link. */
+  public boolean isLoggedInAs(String username) {
+    return !driver.findElements(By.cssSelector("a[href='/profile/" + username + "']")).isEmpty();
+  }
+
+  public void waitUntilLoggedInAs(String username) {
+    new WebDriverWait(driver, 30).until(d -> isLoggedInAs(username));
+  }
+
+  public void clickNavbar(String label) {
+    click(
+        driver.findElement(
+            By.xpath(
+                "//nav[contains(@class,'navbar')]//a[contains(normalize-space(.),'"
+                    + label
+                    + "')]")));
   }
 }

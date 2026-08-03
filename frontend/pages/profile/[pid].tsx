@@ -27,7 +27,9 @@ const Profile = ({ initialProfile }) => {
   } = useSWR(
     `${SERVER_BASE_URL}/profiles/${encodeURIComponent(String(pid))}`,
     fetcher,
-    { initialData: initialProfile }
+    // The server-rendered profile is fetched without the reader's token, so it always
+    // reports following=false. Revalidate on mount to pick up the real follow state.
+    { initialData: initialProfile, revalidateOnMount: true }
   );
 
   if (profileError) return <ErrorMessage message="Can't load profile" />;
@@ -45,17 +47,17 @@ const Profile = ({ initialProfile }) => {
       { profile: { ...profile, following: true } },
       false
     );
-    UserAPI.follow(pid);
+    await UserAPI.follow(pid);
     trigger(`${SERVER_BASE_URL}/profiles/${pid}`);
   };
 
   const handleUnfollow = async () => {
     mutate(
       `${SERVER_BASE_URL}/profiles/${pid}`,
-      { profile: { ...profile, following: true } },
-      true
+      { profile: { ...profile, following: false } },
+      false
     );
-    UserAPI.unfollow(pid);
+    await UserAPI.unfollow(pid);
     trigger(`${SERVER_BASE_URL}/profiles/${pid}`);
   };
 

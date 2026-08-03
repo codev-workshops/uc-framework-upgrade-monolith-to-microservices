@@ -1,0 +1,20 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="RealWorld E2E Acceptance">
+
+    <listeners>
+        <listener class-name="io.spring.selenium.listeners.TestListener"/>
+    </listeners>
+
+    <test name="Core RealWorld Flows">
+        <classes>
+            <class name="io.spring.selenium.tests.AuthFlowTest"/>
+            <class name="io.spring.selenium.tests.ArticleFlowTest"/>
+            <class name="io.spring.selenium.tests.FeedFlowTest"/>
+            <class name="io.spring.selenium.tests.FavoriteFlowTest"/>
+            <class name="io.spring.selenium.tests.FollowFlowTest"/>
+            <class name="io.spring.selenium.tests.CommentFlowTest"/>
+            <class name="io.spring.selenium.tests.TagFilterFlowTest"/>
+        </classes>
+    </test>
+
+</suite>

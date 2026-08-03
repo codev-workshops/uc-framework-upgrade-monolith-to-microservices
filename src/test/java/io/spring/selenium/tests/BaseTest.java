@@ -19,14 +19,22 @@ import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Stream;
 import org.openqa.selenium.Dimension;
 import org.openqa.selenium.OutputType;
+import org.openqa.selenium.PageLoadStrategy;
 import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.edge.EdgeDriver;
 import org.openqa.selenium.firefox.FirefoxDriver;
+import org.openqa.selenium.logging.LogEntry;
+import org.openqa.selenium.logging.LogType;
 import org.testng.ITestResult;
 import org.testng.annotations.*;
 
@@ -52,7 +60,11 @@ public abstract class BaseTest {
   @BeforeMethod
   public void setupTest() {
     initializeDriver();
-    driver.manage().window().maximize();
+    try {
+      driver.manage().window().maximize();
+    } catch (RuntimeException e) {
+      // headless Chrome may not support maximize; the window size is set via options
+    }
     // Don't navigate to base URL in setup - let individual tests handle navigation
   }
 
@@ -60,6 +72,7 @@ public abstract class BaseTest {
   public void teardownTest(ITestResult result) {
     if (result.getStatus() == ITestResult.FAILURE) {
       captureScreenshot(result.getName());
+      logBrowserConsole();
       test.fail("Test failed: " + result.getThrowable().getMessage());
     } else if (result.getStatus() == ITestResult.SUCCESS) {
       test.pass("Test passed");
@@ -136,13 +149,96 @@ public abstract class BaseTest {
         break;
       case "chrome":
       default:
-        WebDriverManager.chromedriver().setup();
-        ChromeOptions options = new ChromeOptions();
-        if (Boolean.parseBoolean(config.getProperty("headless", "false"))) {
-          options.addArguments("--headless");
+        String binary = resolveChromeBinary();
+        WebDriverManager chromeManager = WebDriverManager.chromedriver();
+        String driverVersion = setting("chrome.driver.version", "");
+        if (driverVersion.isEmpty() && !binary.isEmpty()) {
+          driverVersion = versionOfChromeBinary(binary);
         }
+        if (!driverVersion.isEmpty()) {
+          chromeManager.driverVersion(driverVersion);
+        }
+        chromeManager.setup();
+
+        ChromeOptions options = new ChromeOptions();
+        if (!binary.isEmpty()) {
+          options.setBinary(binary);
+        }
+        if (Boolean.parseBoolean(config.getProperty("headless", "false"))) {
+          options.addArguments("--headless=new");
+        }
+        options.addArguments(
+            "--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu", "--window-size=1920,1080");
+        // The RealWorld pages embed remote avatar images; waiting for every subresource makes
+        // navigation hang, so hand control back once the DOM is ready and rely on explicit waits.
+        options.setPageLoadStrategy(PageLoadStrategy.EAGER);
         driver = new ChromeDriver(options);
+        driver.manage().timeouts().pageLoadTimeout(60, TimeUnit.SECONDS);
         break;
+    }
+  }
+
+  /** Config value, overridable on the command line with -Dkey=value. */
+  private static String setting(String key, String fallback) {
+    String property = System.getProperty(key);
+    if (property != null && !property.trim().isEmpty()) {
+      return property.trim();
+    }
+    return config.getProperty(key, fallback).trim();
+  }
+
+  /**
+   * Locate the Chrome binary: an explicit setting wins, then anything on the PATH, then a
+   * Chrome-for-Testing install (which is how headless CI boxes usually ship Chrome).
+   */
+  private static String resolveChromeBinary() {
+    String configured = setting("chrome.binary", "");
+    if (!configured.isEmpty()) {
+      return configured;
+    }
+    for (String candidate :
+        new String[] {"/usr/bin/google-chrome", "/usr/bin/chromium-browser", "/usr/bin/chromium"}) {
+      if (Files.isExecutable(Paths.get(candidate))) {
+        return candidate;
+      }
+    }
+    Path chromeForTesting = Paths.get("/opt/.devin/chrome/chrome");
+    if (Files.isDirectory(chromeForTesting)) {
+      try (Stream<Path> installs = Files.list(chromeForTesting)) {
+        return installs
+            .map(install -> install.resolve("chrome-linux64/chrome"))
+            .filter(Files::isExecutable)
+            .map(Path::toString)
+            .sorted()
+            .reduce((first, second) -> second)
+            .orElse("");
+      } catch (IOException e) {
+        return "";
+      }
+    }
+    return "";
+  }
+
+  /** Ask the browser for its version so WebDriverManager fetches a matching chromedriver. */
+  private static String versionOfChromeBinary(String binary) {
+    try {
+      Process process = new ProcessBuilder(binary, "--version").redirectErrorStream(true).start();
+      String output;
+      try (BufferedReader reader =
+          new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+        output = reader.readLine();
+      }
+      process.waitFor();
+      if (output == null) {
+        return "";
+      }
+      Matcher matcher = Pattern.compile("(\\d+\\.\\d+\\.\\d+\\.\\d+)").matcher(output);
+      return matcher.find() ? matcher.group(1) : "";
+    } catch (IOException e) {
+      return "";
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      return "";
     }
   }
 
@@ -236,5 +332,33 @@ public abstract class BaseTest {
   protected ExtentTest createTest(String testName, String description) {
     test = extent.createTest(testName, description);
     return test;
+  }
+
+  /** Attach the browser console log (page errors, failed requests) to the report. */
+  private void logBrowserConsole() {
+    try {
+      for (LogEntry entry : driver.manage().logs().get(LogType.BROWSER).getAll()) {
+        if (entry.getLevel().intValue() >= Level.WARNING.intValue()) {
+          test.info("browser console: " + entry.getMessage());
+        }
+      }
+    } catch (RuntimeException e) {
+      test.info("browser console unavailable: " + e.getMessage());
+    }
+  }
+
+  /** Base URL of the Next.js frontend under test. */
+  protected String baseUrl() {
+    return config.getProperty("base.url", "http://localhost:3000");
+  }
+
+  /** Base URL of the gateway that fronts all microservices. */
+  protected String apiUrl() {
+    return config.getProperty("api.url", "http://localhost:8080");
+  }
+
+  /** Attach a screenshot of the current page to the report (used for passing flows too). */
+  protected void attachScreenshot(String name) {
+    captureScreenshot(name);
   }
 }
