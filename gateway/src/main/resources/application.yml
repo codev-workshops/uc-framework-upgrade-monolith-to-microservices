@@ -4,6 +4,7 @@ server:
 services:
   user: http://localhost:8081
   tag: http://localhost:8083
+  profile: http://localhost:8085
   monolith: http://localhost:8082
 
 spring:
@@ -20,10 +21,14 @@ spring:
           uri: ${services.tag}
           predicates:
             - Path=/tags,/tags/**
+        - id: profile-service
+          uri: ${services.profile}
+          predicates:
+            - Path=/profiles/**
         - id: monolith
           uri: ${services.monolith}
           predicates:
-            - Path=/articles,/articles/**,/profiles/**,/graphql,/graphiql,/subscriptions/**
+            - Path=/articles,/articles/**,/graphql,/graphiql,/subscriptions/**
       globalcors:
         cors-configurations:
           '[/**]':
