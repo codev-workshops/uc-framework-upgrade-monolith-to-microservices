@@ -109,7 +109,7 @@ each with its own Flyway schema, plus a passing Selenium E2E run.
 
 - [ ] Bootstrap: MIGRATION_PLAN.md + `shared-contracts` module
 - [ ] Phase 0 — user-service + gateway
-- [ ] Phase 1 — tag-service
+- [x] Phase 1 — tag-service
 - [ ] Phase 2 — favorite-service
 - [ ] Phase 3 — profile-service
 - [ ] Phase 4 — comment-service
