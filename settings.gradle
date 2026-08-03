@@ -1,3 +1,5 @@
 rootProject.name = 'realworld'
 
 include 'shared-contracts'
+include 'user-service'
+include 'gateway'
